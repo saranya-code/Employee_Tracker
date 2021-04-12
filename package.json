@@ -1,0 +1,26 @@
+{
+  "name": "employee_tracker",
+  "version": "1.0.0",
+  "description": "A CLI application for managing a company's employees tracker using node, inquirer, and MySQL.",
+  "main": "index.js",
+  "scripts": {
+    "test": "npm run test",
+    "start": "node server.js",
+    "watch": "nodemon server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/saranya-code/Employee_Tracker.git"
+  },
+  "author": "saranya",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/saranya-code/Employee_Tracker/issues"
+  },
+  "homepage": "https://github.com/saranya-code/Employee_Tracker#readme",
+  "dependencies": {
+    "fs": "^0.0.1-security",
+    "inquirer": "^8.0.0",
+    "mysql": "^2.18.1"
+  }
+}
