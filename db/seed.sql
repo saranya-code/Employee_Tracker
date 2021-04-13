@@ -26,17 +26,22 @@ CREATE TABLE employee_tracker_DB.employee(
   PRIMARY KEY (id)); 
 
 INSERT INTO department(name)
-VALUES ("Accountant");
+VALUES ("Accountant"),("Lawyer"),("Senior Engineer");
 
-INSERT INTO department(name)
-VALUES ("lawyer");
 
 INSERT INTO role(title,salary,department_id)
 VALUES ("Accountant",10000,1);
+
 INSERT INTO role(title,salary,department_id)
-VALUES ("Engineer",20000,2);
+VALUES ("Engineer",20000,2)("Engineer",50000,2);
 
 INSERT INTO employee(first_name,last_name,role_id,manager_id)
-VALUES ("Saranya","Dayalan",1,111);
+VALUES ("Sathish","Sankar",3,123);
+
+INSERT INTO employee(first_name,last_name,role_id,manager_id)
+VALUES ("Krithishree","Sathish",1,111);
+
+INSERT INTO employee(first_name,last_name,role_id,manager_id)
+VALUES ("Saranya","Dayalan",2,111);
 
 

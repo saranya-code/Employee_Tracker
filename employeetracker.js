@@ -2,15 +2,20 @@ const inquirer = require('inquirer');
 const fs = require('fs');
 const mysql = require('mysql');
 
-
 //connection information
-let connection = mysql.createConnection({
-    host: "localhost",
-    port: 3306,
-    user: "root",
-    password: "rootroot",
-    database: "employee_tracker_DB"
-});
+const {connection} = require("./js/creds.js");
+const {
+    addingEmployeeToDb, 
+    getEmployee, 
+    updateEmployeeRoleToDB, 
+    deleteEmployeeFromDb,
+    viewEmployeeByManager,
+    getManager
+} = require("./js/employee.js")
+
+const {getRole, addingRoleToDb} = require("./js/role.js")
+const {addingDepartmentToDb, getDepartment} = require("./js/department.js")
+
 
 //Connection to sql DB
 connection.connect((err) => {
@@ -33,60 +38,84 @@ async function askQuestion () {
             'View role',
             'View Employee',
             'Update Employee Role',
-            // 'Update Employee Manager',
             // 'View Employee by Manager',
-            // 'Delete Department',
-            // 'Delete Role',
-            // 'Delete Employee',  
-            // 'View total utilized budget of a department',
+            'Delete Employee',
             'Exit'
         ]
     })
 
     if(question.questionlist === 'Add Department') {
         const department = await addDepartment();
-        console.log(department.department_name)
+        addingDepartmentToDb(department.department_name)
         askQuestion();
     }
 
     else if(question.questionlist === 'Add Role') {
         const role = await addRole();
-        console.log(role.role_title);
-        console.log(role.role_salary);
-        const department= await getDepartment()
-        const selectedDepartment= await chooseDepartment(department)   //
-        addingRoleToDb(role.role_title,role.role_salary)
-        
+        const departments = await getDepartment()
+        const selectedDepartment= await chooseDepartment(departments)
+        const selectedDepartmentId = await getId(selectedDepartment.choose_department)
+        addingRoleToDb(role.role_title,role.role_salary, selectedDepartmentId)
         askQuestion();
     }
     else if(question.questionlist === 'Add Employee') {
         const newemployee = await addNewEmployee();
         const roleListFromdb = await getRole()
         const selectedRole = await chooseRole(roleListFromdb)
+        const selectedRoleId = await getId(selectedRole.choose_role)
         const managerListFromdb = await getManager();
         const selectedmanager = await chooseManager(managerListFromdb)
-        // Need to insert newemployee,seleced role,selected manager
+        const selectedManagerId = await getId(selectedmanager.choose_manager)
+        addingEmployeeToDb(newemployee.firstname,newemployee.lastname,selectedRoleId,selectedManagerId)
         askQuestion();
     }
     else if(question.questionlist === 'View department') {
         // view all department here viewDepartment()
+        const departmentListFromDb = await getDepartment()
+        console.table(departmentListFromDb)
         askQuestion();
     }
     else if(question.questionlist === 'View role') {
         // view all role here viewRole
+        const roleListFromdb = await getRole()
+        console.table(roleListFromdb)
         askQuestion();
     }
     else if(question.questionlist === 'View Employee') {
         // view all role here viewRole
+        const getEmployeeListFromDb = await getEmployee()
+        console.table(getEmployeeListFromDb)
         askQuestion();
     }
     else if(question.questionlist === 'Update Employee Role') {
-        // update employee role  updateEmployeeRole
+        const getEmployeeListFromDb = await getEmployee()
+        const selectedEmpToUpdate = await chooseEmployee(getEmployeeListFromDb)
+        const selectedEmpId = await getId(selectedEmpToUpdate.choose_Emp_To_Update)   //[1,2,3,4,5].filter(item=> item==3 )
+        const roleListFromdb = await getRole()
+        const seletedUpdatedRole = await choseEmployeeRole(roleListFromdb)
+        const selectedRoleId = await getId(seletedUpdatedRole.choose_emp_role)
+        updateEmployeeRoleToDB(selectedRoleId,selectedEmpId)
         askQuestion();
-    }else{
+    } 
+    else if(question.questionlist === 'Delete Employee'){
+        const getEmployeeListFromDb = await getEmployee()
+        const selectedEmpToUpdate = await chooseEmployee(getEmployeeListFromDb)
+        const selectedEmpId = await getId(selectedEmpToUpdate.choose_Emp_To_Update)
+        deleteEmployeeFromDb(selectedEmpId)
+        askQuestion();
+    } 
+    else if(question.questionlist === 'View Employee by Manager'){
+        const managerListFromdb = await getManager();
+        const selectedmanager = await chooseManager(managerListFromdb)
+        const selectedManagerId = await getId(selectedmanager.choose_manager)
+        viewEmployeeByManager(selectedManagerId)
+        askQuestion();
+    }
+    else {
         connection.end();
     }
 }
+
 //Add new department
 function addDepartment(){
     return inquirer.prompt({
@@ -128,88 +157,44 @@ function addNewEmployee(){
     ])
 }
 
-//View department
-function viewDepartment(){
-    return inquirer.prompt([
-        {
-            message:'',        // view all department
-            type:'list',
-            name:'department'
-        }
-        
-    ])
-}
-
-//View role
-function viewRole(){
-    return inquirer.prompt([
-        {
-            message:'',        // view all role
-            type:'list',
-            name:'view_role'
-        }
-        
-    ])
-}
-
-//View Employee
-function viewEmployee(){
-    return inquirer.prompt([
-        {
-            message:'',        // view all role
-            type:'list',
-            name:'view_employee'
-        }
-        
-    ])
-}
-
 //Update Employee role
-function updateEmployeeRole(){
+function choseEmployeeRole(roleList){
     return inquirer.prompt([
         {
-            message:'',        // update employee role
+            message:'choose a role to update',        // update employee role
             type:'list',
-            name:'update_emp_role'
+            name:'choose_emp_role',
+            choices: roleList.map(role=>`${role.id}-${role.title}`)
         }
         
     ])
 }
-//get role
-function getRole(){
-    return new Promise((resolve, reject) => {
-        connection.query(`SELECT * FROM role;`, function(error,result) {
-            if (error) {
-                return reject(error);
-            }
-            return  resolve(result);
-        });
-    });
+//choose employee
+function chooseEmployee(employeeList){
+    return inquirer.prompt([
+        {
+            message:'Choose Employee',        
+            type:'list',
+            name:'choose_Emp_To_Update',
+            choices: ()=> employeeList.map(employee=>`${employee.id}-${employee.first_name}`)
+        }
+        
+    ])
 }
+
 //Choose role
 function chooseRole(roleResponse){
     return inquirer.prompt(
         {
             message:'Choose a role ?',
-            type:'list',
+            type:'rawlist',
             name:'choose_role',
-            choices: roleResponse.map(role => {
-                return {title: role.title, id: role.id}
-            }) // [{title:eng,id:5},{title:acc,id:3}]
+            choices: () => roleResponse.map(role => `${role.id}-${role.title}`)
+            
         },
     )
 }
- //get manager
- function getManager(){
-    return new Promise((resolve, reject) => {
-        connection.query(`SELECT * FROM employee WHERE manager_id is NULL;`, function(error,result) {
-            if (error) {
-                return reject(error);
-            }
-            return  resolve(result);
-        });
-    });
-}
+
 //choose manager
 function chooseManager(managerListFromdb){
     return inquirer.prompt(
@@ -217,54 +202,23 @@ function chooseManager(managerListFromdb){
             message:'Choose a Manager ?',
             type:'list',
             name:'choose_manager',
-            choices: managerListFromdb.map(manager => {
-                return {managerName:manager.first_name, managerId: manager.id}
-            }) // [{managerId:1}]
+            choices: () => managerListFromdb.map(manager => `${manager.id}-${manager.first_name}`) // [{managerId:1}]
         },
     )
 }
 
-// Adding role to db
-function addingRoleToDb(title,salary){
-    return new Promise((resolve, reject) => {
-        connection.query(`INSERT INTO role SET ?`,
-        {
-            title:title,
-             salary: salary,
-             department_id: 555,
-        }, function(error,result) {
-            if (error) {
-                return reject(error);
-            }
-            return  resolve(result);
-        });
-    });
-
-}
-//get department from DB
-
-function getDepartment(){
-    return new Promise((resolve,reject) =>{
-        connection.query(`SELECT * FROM department;`,function(error,result){
-            if(error){
-                return reject(error);
-            }
-            return resolve(result);
-        });
-    });
-}
 //Choose department
-function chooseDepartment(){
+function chooseDepartment(departments){
     return inquirer.prompt(
         {
             message:'Choose a Department ?',
             type:'list',
             name:'choose_department',
-            choices: selectedDepartment.map(department => {
-                return {name:department.name, id: department.id}
-            }) // [{title:eng,id:5},{title:acc,id:3}]
+            choices: () => departments.map(department => `${department.id}-${department.name}`) // [{title:eng,id:5},{title:acc,id:3}]
         },
     )
 }
 
-
+function getId (text) {
+    return text.split('-')[0]   // '145543-saranya'.split('-')[0] => '145543'
+}
