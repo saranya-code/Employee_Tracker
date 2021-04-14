@@ -2,16 +2,17 @@ const inquirer = require('inquirer');
 const fs = require('fs');
 const mysql = require('mysql');
 
-//connection information
+//Connection information
 const {connection} = require("./js/creds.js");
 const {
-    addingEmployeeToDb, 
-    getEmployee, 
-    updateEmployeeRoleToDB, 
-    deleteEmployeeFromDb,
-    viewEmployeeByManager,
-    getManager
-} = require("./js/employee.js")
+        addingEmployeeToDb, 
+        getEmployee, 
+        updateEmployeeRoleToDB, 
+        deleteEmployeeFromDb,
+        viewEmployeeByManager,
+        updateEmployeeManagerToDb,
+        getManager
+      } = require("./js/employee.js")
 
 const {getRole, addingRoleToDb} = require("./js/role.js")
 const {addingDepartmentToDb, getDepartment} = require("./js/department.js")
@@ -21,7 +22,7 @@ const {addingDepartmentToDb, getDepartment} = require("./js/department.js")
 connection.connect((err) => {
     if (err) throw err;
     console.log(`connected as id ${connection.threadId}`);
-    console.log('CONNECTED TO MYSQL SERVER');
+    console.log('********** CONNECTED TO MYSQL SERVER ***********');
     askQuestion()
 });
 
@@ -38,7 +39,8 @@ async function askQuestion () {
             'View role',
             'View Employee',
             'Update Employee Role',
-            // 'View Employee by Manager',
+            'Update employee managers',
+            'View Employee by Manager',
             'Delete Employee',
             'Exit'
         ]
@@ -65,24 +67,21 @@ async function askQuestion () {
         const selectedRoleId = await getId(selectedRole.choose_role)
         const managerListFromdb = await getManager();
         const selectedmanager = await chooseManager(managerListFromdb)
-        const selectedManagerId = await getId(selectedmanager.choose_manager)
+        const selectedManagerId = await JSON.parse(getId(selectedmanager.choose_manager))
         addingEmployeeToDb(newemployee.firstname,newemployee.lastname,selectedRoleId,selectedManagerId)
         askQuestion();
     }
     else if(question.questionlist === 'View department') {
-        // view all department here viewDepartment()
         const departmentListFromDb = await getDepartment()
         console.table(departmentListFromDb)
         askQuestion();
     }
     else if(question.questionlist === 'View role') {
-        // view all role here viewRole
         const roleListFromdb = await getRole()
         console.table(roleListFromdb)
         askQuestion();
     }
     else if(question.questionlist === 'View Employee') {
-        // view all role here viewRole
         const getEmployeeListFromDb = await getEmployee()
         console.table(getEmployeeListFromDb)
         askQuestion();
@@ -90,13 +89,24 @@ async function askQuestion () {
     else if(question.questionlist === 'Update Employee Role') {
         const getEmployeeListFromDb = await getEmployee()
         const selectedEmpToUpdate = await chooseEmployee(getEmployeeListFromDb)
-        const selectedEmpId = await getId(selectedEmpToUpdate.choose_Emp_To_Update)   //[1,2,3,4,5].filter(item=> item==3 )
+        const selectedEmpId = await getId(selectedEmpToUpdate.choose_Emp_To_Update)   
         const roleListFromdb = await getRole()
         const seletedUpdatedRole = await choseEmployeeRole(roleListFromdb)
         const selectedRoleId = await getId(seletedUpdatedRole.choose_emp_role)
         updateEmployeeRoleToDB(selectedRoleId,selectedEmpId)
         askQuestion();
     } 
+    else if(question.questionlist === 'Update employee managers') {
+        const getEmployeeListFromDb = await getEmployee()
+        const filteredEmp = getEmployeeListFromDb.filter(emp => emp.manager_id != null)
+        const selectedEmpToUpdate = await chooseEmployee(filteredEmp)
+        const selectedEmpId = await getId(selectedEmpToUpdate.choose_Emp_To_Update)
+        const managerListFromdb = await getManager();
+        const selectedmanager = await chooseManager(managerListFromdb)
+        const selectedManagerId = await getId(selectedmanager.choose_manager)
+        updateEmployeeManagerToDb(selectedEmpId,selectedManagerId)
+        askQuestion();
+    }
     else if(question.questionlist === 'Delete Employee'){
         const getEmployeeListFromDb = await getEmployee()
         const selectedEmpToUpdate = await chooseEmployee(getEmployeeListFromDb)
@@ -161,7 +171,7 @@ function addNewEmployee(){
 function choseEmployeeRole(roleList){
     return inquirer.prompt([
         {
-            message:'choose a role to update',        // update employee role
+            message:'choose a role to update',       
             type:'list',
             name:'choose_emp_role',
             choices: roleList.map(role=>`${role.id}-${role.title}`)
@@ -169,7 +179,7 @@ function choseEmployeeRole(roleList){
         
     ])
 }
-//choose employee
+//Choose Employee
 function chooseEmployee(employeeList){
     return inquirer.prompt([
         {
@@ -202,7 +212,7 @@ function chooseManager(managerListFromdb){
             message:'Choose a Manager ?',
             type:'list',
             name:'choose_manager',
-            choices: () => managerListFromdb.map(manager => `${manager.id}-${manager.first_name}`) // [{managerId:1}]
+            choices: () => ['null-none',...managerListFromdb.map(manager => `${manager.id}-${manager.first_name}`)] 
         },
     )
 }
@@ -214,11 +224,11 @@ function chooseDepartment(departments){
             message:'Choose a Department ?',
             type:'list',
             name:'choose_department',
-            choices: () => departments.map(department => `${department.id}-${department.name}`) // [{title:eng,id:5},{title:acc,id:3}]
+            choices: () => departments.map(department => `${department.id}-${department.name}`) 
         },
     )
 }
 
 function getId (text) {
-    return text.split('-')[0]   // '145543-saranya'.split('-')[0] => '145543'
+    return text.split('-')[0]   
 }
